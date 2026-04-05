@@ -300,7 +300,7 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
     private final BitSet dirtyCells = new BitSet();
 
     // Tracks index that needs to be made fully visible after layout
-    private int pendingScrollToIndex = -1;
+    int pendingScrollToIndex = -1;
 
     Timeline sbTouchTimeline;
     KeyFrame sbTouchKF1;

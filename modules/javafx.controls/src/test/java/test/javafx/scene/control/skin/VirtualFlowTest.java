@@ -2118,6 +2118,41 @@ assertEquals(0, firstCell.getIndex());
         assertEquals(flow.cells, flow.sheetChildren);
     }
 
+    @Test
+    // see JDK-8328167
+    public void testScrollToTopSetsPendingScrollToIndex() {
+        assertEquals(-1, flow.getPendingScrollToIndex(),
+            "pendingScrollToIndex must be -1 initially");
+
+        flow.scrollToTop(50);
+        assertEquals(50, flow.getPendingScrollToIndex(),
+            "scrollToTop must set pendingScrollToIndex");
+
+        pulse();
+        assertEquals(-1, flow.getPendingScrollToIndex(),
+            "pendingScrollToIndex must be cleared after layout");
+    }
+
+    @Test
+    // see JDK-8328167
+    public void testScrollToTopSetsPendingScrollToIndexNearEnd() {
+        // The bug manifested when scrolling to items near the end of
+        // the list after adding new items. Verify the flag is set for
+        // indices near the end so the post-layout visibility check runs.
+        flow.setCellCount(20);
+        pulse();
+        pulse();
+
+        flow.setCellCount(100);
+        flow.scrollToTop(98);
+        assertEquals(98, flow.getPendingScrollToIndex(),
+            "scrollToTop must set pendingScrollToIndex after adding items");
+
+        pulse();
+        assertEquals(-1, flow.getPendingScrollToIndex(),
+            "pendingScrollToIndex must be cleared after layout");
+    }
+
 }
 
 class GraphicalCellStub extends IndexedCellShim<Node> {

@@ -39,6 +39,10 @@ public class VirtualFlowShim<T extends IndexedCell> extends VirtualFlow<T> {
     public final ArrayLinkedList<T> cells = super.cells;
     public final ObservableList<Node> sheetChildren = super.sheetChildren;
 
+    public int getPendingScrollToIndex() {
+        return pendingScrollToIndex;
+    }
+
     @Override
     public void setViewportLength(double value) {
         super.setViewportLength(value);
