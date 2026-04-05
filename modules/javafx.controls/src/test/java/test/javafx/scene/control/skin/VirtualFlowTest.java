@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -2151,6 +2152,44 @@ assertEquals(0, firstCell.getIndex());
         pulse();
         assertEquals(-1, flow.getPendingScrollToIndex(),
             "pendingScrollToIndex must be cleared after layout");
+    }
+
+    @Test
+    // see JDK-8328167
+    public void testScrollToTopCallsScrollToCellOnOvershoot() {
+        // Track scrollTo(cell) calls via an anonymous subclass.
+        AtomicInteger scrollToCalls = new AtomicInteger(0);
+        VirtualFlowShim<IndexedCell> testFlow = new VirtualFlowShim<>() {
+            @Override public void scrollTo(IndexedCell cell) {
+                scrollToCalls.incrementAndGet();
+                super.scrollTo(cell);
+            }
+        };
+        testFlow.setVertical(true);
+        testFlow.setCellFactory(p -> new CellStub(testFlow) {
+            @Override protected double computePrefHeight(double width) { return 25; }
+            @Override protected double computeMinHeight(double width) { return 25; }
+            @Override protected double computeMaxHeight(double width) { return 25; }
+            @Override protected double computePrefWidth(double height) { return 100; }
+            @Override protected double computeMinWidth(double height) { return 100; }
+            @Override protected double computeMaxWidth(double height) { return 100; }
+        });
+        testFlow.setCellCount(100);
+        testFlow.resize(300, 30);
+        testFlow.layout();
+        testFlow.layout();
+
+        // scrollToTop sets pendingScrollToIndex and computes absoluteOffset.
+        // Nudge absoluteOffset backward to simulate the estimation drift
+        // that occurs in the real rendering pipeline. This shifts the
+        // target cell down so its bottom extends past the viewport.
+        testFlow.scrollToTop(50);
+        testFlow.adjustAbsoluteOffset(-10);
+        scrollToCalls.set(0);
+        testFlow.layout();
+
+        assertTrue(scrollToCalls.get() > 0,
+            "scrollTo(cell) must be called when cell overshoots viewport");
     }
 
 }

@@ -43,6 +43,10 @@ public class VirtualFlowShim<T extends IndexedCell> extends VirtualFlow<T> {
         return pendingScrollToIndex;
     }
 
+    public void adjustAbsoluteOffset(double delta) {
+        absoluteOffset += delta;
+    }
+
     @Override
     public void setViewportLength(double value) {
         super.setViewportLength(value);
