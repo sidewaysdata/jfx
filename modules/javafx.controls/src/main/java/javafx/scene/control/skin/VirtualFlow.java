@@ -940,6 +940,10 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
         @Override protected void invalidated() {
             super.invalidated();
+            // Any change to position supersedes a pending scrollToTop/scrollTo
+            // target — scrollbar drags, wheel, scrollTo(cell), external
+            // setPosition, or property bindings all land here.
+            pendingScrollToIndex = -1;
             adjustAbsoluteOffset();
             requestLayout();
         }
@@ -1590,6 +1594,11 @@ public class VirtualFlow<T extends IndexedCell> extends Region {
 
             adjustPositionToIndex(index);
             addAllToPile();
+
+            // Same offset-estimation caveat as scrollToTop(int): re-verify
+            // full visibility after layout, once real cell sizes are known.
+            pendingScrollToIndex = index;
+
             requestLayout();
         }
     }

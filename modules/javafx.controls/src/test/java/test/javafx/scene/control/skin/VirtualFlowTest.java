@@ -2192,6 +2192,50 @@ assertEquals(0, firstCell.getIndex());
             "scrollTo(cell) must be called when cell overshoots viewport");
     }
 
+    @Test
+    // see JDK-8328167
+    public void testScrollPixelsClearsPendingScrollToIndex() {
+        // An intervening scroll (scrollbar drag, wheel, programmatic
+        // scrollTo(cell)) must invalidate a pending scrollToTop target,
+        // otherwise the post-layout correction would yank the viewport
+        // back to the stale target.
+        flow.scrollToTop(50);
+        assertEquals(50, flow.getPendingScrollToIndex());
+
+        flow.scrollPixels(25);
+        assertEquals(-1, flow.getPendingScrollToIndex(),
+            "scrollPixels must clear pendingScrollToIndex");
+    }
+
+    @Test
+    // see JDK-8328167
+    public void testSetPositionClearsPendingScrollToIndex() {
+        flow.scrollToTop(50);
+        assertEquals(50, flow.getPendingScrollToIndex());
+
+        flow.setPosition(0.1);
+        assertEquals(-1, flow.getPendingScrollToIndex(),
+            "setPosition must clear pendingScrollToIndex");
+    }
+
+    @Test
+    // see JDK-8328167
+    public void testScrollToIntFallbackSetsPendingScrollToIndex() {
+        // scrollTo(int) falls back to adjustPositionToIndex when the
+        // target cell is not visible and no neighbor is available. That
+        // path uses size estimates for unrendered cells so it needs the
+        // same post-layout visibility check as scrollToTop(int).
+        assertEquals(-1, flow.getPendingScrollToIndex());
+
+        flow.scrollTo(95);
+        assertEquals(95, flow.getPendingScrollToIndex(),
+            "scrollTo(int) fallback must set pendingScrollToIndex");
+
+        pulse();
+        assertEquals(-1, flow.getPendingScrollToIndex(),
+            "pendingScrollToIndex must be cleared after layout");
+    }
+
 }
 
 class GraphicalCellStub extends IndexedCellShim<Node> {
