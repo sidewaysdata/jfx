@@ -125,8 +125,20 @@ jobs:
           # Remove cygwin's coreutils `link.exe` so MSVC's link.exe wins in
           # make's PATH search. Without this, :media:buildWinGlib fails with
           # "link: unknown option -- o" during the final DLL link step.
-          $cygLink = "$HOME\cygwin\cygwin64\usr\bin\link.exe"
-          if (Test-Path $cygLink) { Remove-Item -Force $cygLink }
+          # Cygwin's binaries live in cygwin64\bin; usr\bin may or may not
+          # be a symlink to it. Delete from both to be safe, then verify.
+          foreach ($p in @(
+              "$HOME\cygwin\cygwin64\bin\link.exe",
+              "$HOME\cygwin\cygwin64\usr\bin\link.exe"
+          )) {
+              if (Test-Path $p) {
+                  Remove-Item -Force $p
+                  Write-Host "Removed $p"
+              }
+          }
+          if (Test-Path "$HOME\cygwin\cygwin64\bin\link.exe") {
+              Write-Error "cygwin link.exe still present after removal"; exit 1
+          }
 
       - name: Install ant (Windows)
         if: matrix.name == 'win'
