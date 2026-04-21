@@ -1831,13 +1831,13 @@ void addMavenPublication(Project project, List<String> projectDependencies) {
     project.publishing {
         repositories {
             maven {
-                def repositoryUrl = project.hasProperty('repositoryUrl') ? project.getProperty('repositoryUrl') : ""
-                def repositoryUsername = project.hasProperty('repositoryUsername') ? project.getProperty('repositoryUsername') : ""
-                def repositoryPassword = project.hasProperty('repositoryPassword') ? project.getProperty('repositoryPassword') : ""
-                url repositoryUrl
+                name = "repsy"
+                url = uri("https://repo.repsy.io/mvn/winrid/sidewaysdata")
                 credentials {
-                   username repositoryUsername
-                   password repositoryPassword
+                    // Pulled from ~/.m2/settings.xml (id=repsy) via Gradle's built-in Maven credential reader,
+                    // or from repsyUsername/repsyPassword Gradle props, or REPSY_USERNAME/REPSY_PASSWORD env vars.
+                    username = findProperty("repsyUsername") ?: System.getenv("REPSY_USERNAME")
+                    password = findProperty("repsyPassword") ?: System.getenv("REPSY_PASSWORD")
                 }
             }
         }
