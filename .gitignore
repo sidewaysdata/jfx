@@ -79,3 +79,6 @@ hs_err_pid*
 # Ignore Windows system files
 Desktop.ini
 Thumbs.db
+
+# Ignore Python bytecode cache (publish.py)
+__pycache__/
