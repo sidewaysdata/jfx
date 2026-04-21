@@ -2,18 +2,24 @@
 """
 Publish the sidewaysdata JavaFX fork to repsy.
 
-Each run publishes ONE platform classifier (linux, mac, or win) plus the
-classifier-less jars for every javafx.* module. OpenJFX cannot cross-compile
-native libraries, so Mac and Windows classifiers must be published from their
-respective host machines.
+Each run publishes ONE platform classifier (linux, mac, mac-aarch64, or win)
+plus the classifier-less jars for every javafx.* module. OpenJFX cannot
+cross-compile native libraries, so Mac and Windows classifiers must be
+published from their respective host machines.
+
+The classifier defaults to the platform name, but on Apple Silicon hosts the
+caller should pass `--classifier mac-aarch64` to avoid overwriting the Intel
+Mac (`mac`) classifier. Classifier names follow the javafxplugin convention
+so consumers resolve them via ${javafx.platform}.
 
 Version scheme: 27.0.0-sd.<git-short-sha>. Each commit to the fork gets a
 distinct immutable version; bump timer/build.gradle's jfxVersion in lockstep.
 
 Usage:
-    python3 publish.py                  # auto-detect host platform, version from HEAD sha
+    python3 publish.py                                       # auto-detect host
     python3 publish.py --platform linux
-    python3 publish.py --version 27.0.0-sd.abc1234 --platform mac
+    python3 publish.py --platform mac --classifier mac-aarch64
+    python3 publish.py --version 27.0.0-sd.abc1234 --platform win
 
 Credentials: repsyUsername/repsyPassword Gradle props, or REPSY_USERNAME/
 REPSY_PASSWORD env vars, or ~/.m2/settings.xml (id=repsy).
@@ -43,7 +49,7 @@ JFX_DIR = Path(__file__).resolve().parent
 GROUP = "org.openjfx"
 REPSY_BASE = "https://repo.repsy.io/mvn/winrid/sidewaysdata"
 MODULES = ["javafx-base", "javafx-graphics", "javafx-controls", "javafx-media", "javafx-fxml", "javafx-swing", "javafx-web"]
-EXPECTED_CLASSIFIERS = ["linux", "mac", "win"]
+EXPECTED_CLASSIFIERS = ["linux", "mac", "mac-aarch64", "win"]
 
 
 def detect_host_platform() -> str:
@@ -81,7 +87,7 @@ def refuse_cross_compile(platform_arg: str) -> None:
         )
 
 
-def run_gradle_publish(version: str, platform_name: str) -> None:
+def run_gradle_publish(version: str, platform_name: str, classifier: str) -> None:
     gradlew = JFX_DIR / ("gradlew.bat" if platform_name == "win" else "gradlew")
     cmd = [
         str(gradlew),
@@ -92,6 +98,8 @@ def run_gradle_publish(version: str, platform_name: str) -> None:
         "-PMAVEN_PUBLISH=true",
         "-PCOMPILE_MEDIA=true",
     ]
+    if classifier != platform_name:
+        cmd.append(f"-PMAVEN_CLASSIFIER_OVERRIDE={classifier}")
     print(f">>> {' '.join(cmd)}", flush=True)
     result = subprocess.run(cmd, cwd=str(JFX_DIR))
     if result.returncode != 0:
@@ -157,13 +165,13 @@ def list_available_classifiers(artifact_id: str, version: str) -> list[str]:
     return found
 
 
-def report_coordinates(version: str, published_platform: str) -> None:
+def report_coordinates(version: str, published_classifier: str) -> None:
     print()
     print("=" * 60)
     print(f"Published coordinates at {version}:")
     for mod in MODULES:
         print(f"  {GROUP}:{mod}:{version}")
-        print(f"  {GROUP}:{mod}:{version}:{published_platform}")
+        print(f"  {GROUP}:{mod}:{version}:{published_classifier}")
     print("=" * 60)
 
     probe_artifact = "javafx-graphics"
@@ -199,16 +207,26 @@ def main() -> None:
         default="host",
         help="Which platform's native libs to publish. Must match the host OS.",
     )
+    parser.add_argument(
+        "--classifier",
+        help=(
+            "Maven classifier to publish under. Defaults to the platform name. "
+            "On Apple Silicon, pass 'mac-aarch64' so the publish doesn't overwrite "
+            "the Intel Mac 'mac' classifier."
+        ),
+    )
     args = parser.parse_args()
 
     platform_name = detect_host_platform() if args.platform == "host" else args.platform
     refuse_cross_compile(platform_name)
 
-    version = args.version or default_version()
-    print(f"Publishing {GROUP}:javafx-*:{version} (classifier: {platform_name}) to {REPSY_BASE}")
+    classifier = args.classifier or platform_name
 
-    run_gradle_publish(version, platform_name)
-    report_coordinates(version, platform_name)
+    version = args.version or default_version()
+    print(f"Publishing {GROUP}:javafx-*:{version} (classifier: {classifier}) to {REPSY_BASE}")
+
+    run_gradle_publish(version, platform_name, classifier)
+    report_coordinates(version, classifier)
 
 
 if __name__ == "__main__":
