@@ -156,21 +156,38 @@ jobs:
           java -version
           ant -version
 
+      # --- Windows: set up MSVC env so cl.exe is on PATH for media build ---
+      - name: Set up MSVC environment (Windows)
+        if: matrix.name == 'win'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       # --- Publish ------------------------------------------------------
-      - name: Verify toolchain (Linux/macOS)
+      - name: Verify toolchain and repsy secrets (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
           set -x
           java -version
           python3 --version
           git rev-parse --short=7 HEAD
+          # Fail fast if secrets are missing. Print only lengths; never values.
+          [ -n "${REPSY_USERNAME}" ] || { echo "REPSY_USERNAME is empty or unset"; exit 1; }
+          [ -n "${REPSY_PASSWORD}" ] || { echo "REPSY_PASSWORD is empty or unset"; exit 1; }
+          echo "REPSY_USERNAME length: ${#REPSY_USERNAME}"
+          echo "REPSY_PASSWORD length: ${#REPSY_PASSWORD}"
 
-      - name: Verify toolchain (Windows)
+      - name: Verify toolchain and repsy secrets (Windows)
         if: matrix.name == 'win'
         run: |
           java -version
           python --version
           git rev-parse --short=7 HEAD
+          where cl.exe
+          if ([string]::IsNullOrEmpty($env:REPSY_USERNAME)) { Write-Error "REPSY_USERNAME is empty or unset"; exit 1 }
+          if ([string]::IsNullOrEmpty($env:REPSY_PASSWORD)) { Write-Error "REPSY_PASSWORD is empty or unset"; exit 1 }
+          Write-Host "REPSY_USERNAME length: $($env:REPSY_USERNAME.Length)"
+          Write-Host "REPSY_PASSWORD length: $($env:REPSY_PASSWORD.Length)"
 
       - name: Publish (Linux/macOS)
         if: runner.os != 'Windows'
